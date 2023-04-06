@@ -49,24 +49,39 @@ for t in timepoint_folders:
         unique_ids[id].append(p)
 
 # Retrieve date time data
-data = dict(
+summary = dict(
     replicate=[],
     time=[],
     timepoints=[])
 
-for replicate, folders in unique_ids.items():
+frame_level = dict(
+    replicate=[],
+    frame=[],
+    time=[],
+    timepoints=[])
 
+for replicate, folders in unique_ids.items():
     dt = []
     timepoints = []
     for i,f in enumerate(folders):
-        try:
-            abs_time = os.path.getmtime(f)
-            data['time'].append(datetime.datetime.fromtimestamp(abs_time))
-            data['timepoints'].append(i)
-            data['replicate'].append(replicate)
-        except Exception as e:
-            print(e)
+        if 'metadata.txt' not in glob.glob(f'{f}/*'):
+            summary['time'].append(None)
+            summary['replicate'].append(replicate)
+            summary['timepoints'].append(i)
             continue
+
+        with open(f'{f}/metadata.txt', 'r+') as d:
+            metadata = json.load(d)
+
+            summary['time'].append(metadata['Summary']['Time'][:-6])
+            summary['replicate'].append(replicate)
+            summary['timepoints'].append(i)
+
+            for j,frame_t in enumerate([frame for frame in metadata.keys() if 'Frame' in frame]):
+                frame_level['replicate'].append(replicate)
+                frame_level['frame'].append(j)
+                frame_level['time'].append(metadata[frame_t]['Time'][:-6])
+                frame_level['timepoints'].append(i)
 
 datetime_df = pd.DataFrame(data=data)
 datetime_df.to_csv(f'{out_dir}/{datetime_filename}')
