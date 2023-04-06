@@ -20,16 +20,19 @@ import gc
 import numpy as np
 import pandas as pd
 import datetime
+import json
 
 # Parameters -----------------------------------------
 source_dir = '/path/to/images' # Source directory to the parent folder to all timepoint folders
 out_dir = '/path/to/output' # Output folder for all avi files
-datetime_filename = 'datetime.csv' # Dates and times of acquisitions for each replicates/timepoints
+summary_datetime_filename = 'summary_datetime.csv' # Dates and times of acquisitions for each replicates/timepoints
+frame_datetime_filename = 'frame_datetime.csv' # Dates and times of individual frames for each replicates/timepoints
+replicate_extension = ''
 fps = 30
-resolution = (1024, 1026)
+resolution = (750, 750)
 timepoint_len = 600
-codec = 'FFV1' 
-cores = 4
+codec = 'FFV1' # Lossless FFMPEG encoder
+cores = 6
 # ----------------------------------------------------
 
 # Retrieve paths for compilation
@@ -48,6 +51,23 @@ for t in timepoint_folders:
 
         unique_ids[id].append(p)
 
+print('[INFO] Checking for existing complete compiled videos...')
+print('Before checking: ' + str(len(unique_ids.keys())))
+
+video_lens = {}
+for k in list(unique_ids.keys()):
+    source_timepoint_len = len(unique_ids[k])
+
+    out_file = vuba.Video(f'{out_dir}/{k}{replicate_extension}.avi')
+    out_len = len(out_file)
+    out_file.close()
+    out_timepoint_len = round(out_len / 600)
+
+    if source_timepoint_len == out_timepoint_len:
+        del unique_ids[k]
+
+print('After checking: ' + str(len(unique_ids.keys())))
+
 # Retrieve date time data
 summary = dict(
     replicate=[],
@@ -64,13 +84,13 @@ for replicate, folders in unique_ids.items():
     dt = []
     timepoints = []
     for i,f in enumerate(folders):
-        if 'metadata.txt' not in glob.glob(f'{f}/*'):
+        if not os.path.exists(f'{f}/metadata.txt'):
             summary['time'].append(None)
             summary['replicate'].append(replicate)
             summary['timepoints'].append(i)
             continue
 
-        with open(f'{f}/metadata.txt', 'r+') as d:
+        with open(f'{f}/metadata.txt', 'r') as d:
             metadata = json.load(d)
 
             summary['time'].append(metadata['Summary']['Time'][:-6])
@@ -83,8 +103,11 @@ for replicate, folders in unique_ids.items():
                 frame_level['time'].append(metadata[frame_t]['Time'][:-6])
                 frame_level['timepoints'].append(i)
 
-datetime_df = pd.DataFrame(data=data)
-datetime_df.to_csv(f'{out_dir}/{datetime_filename}')
+summary_datetime_df = pd.DataFrame(data=summary)
+summary_datetime_df.to_csv(f'{out_dir}/{summary_datetime_filename}')
+
+frame_datetime_df = pd.DataFrame(data=frame_level)
+frame_datetime_df.to_csv(f'{out_dir}/{frame_datetime_filename}')
 
 # Frame producers and consumers
 def consume(chunk, replicates_pg, frame_queue, frame_queue_id, request_queue):
