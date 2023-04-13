@@ -77,7 +77,8 @@ summary = dict(
 frame_level = dict(
     replicate=[],
     frame=[],
-    time=[],
+    elapsed_time_s=[],
+    elapsed_time_ms=[],
     timepoints=[])
 
 for replicate, folders in unique_ids.items():
@@ -97,10 +98,16 @@ for replicate, folders in unique_ids.items():
             summary['replicate'].append(replicate)
             summary['timepoints'].append(i)
 
+            current_time = 0
             for j,frame_t in enumerate([frame for frame in metadata.keys() if 'Frame' in frame]):
+                if j == 0:
+                    current_time = metadata[frame_t]['ElapsedTime-ms']
+
+                relative_time = metadata[frame_t]['ElapsedTime-ms'] - current_time
                 frame_level['replicate'].append(replicate)
                 frame_level['frame'].append(j)
-                frame_level['time'].append(metadata[frame_t]['Time'][:-6])
+                frame_level['elapsed_time_s'].append(round(relative_time / 1000, 2))
+                frame_level['elapsed_time_ms'].append(round(relative_time, 2))
                 frame_level['timepoints'].append(i)
 
 summary_datetime_df = pd.DataFrame(data=summary)
