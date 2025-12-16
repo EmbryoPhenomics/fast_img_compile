@@ -32,7 +32,7 @@ fps = 30 # Frame-rate source video was captured at
 resolution = (1024, 1024) # Source video resolution
 timepoint_len = 300 # Number of frames captured for each individual, per timepoint
 codec = "FFV1"  # Lossless FFMPEG encoder
-cores = 2 # Number of cores to use for parallel processing
+cores = 6 # Number of cores to use for parallel processing
 # ----------------------------------------------------
 
 # Retrieve paths for compilation
